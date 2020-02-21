@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "API Gateway - usage plan template."
+
+Parameters:
+  TargetApiId:
+    Type: String
+
+Resources:
+  UsagePlan:
+    Type: "AWS::ApiGateway::UsagePlan"
+    Properties:
+      ApiStages:
+        - ApiId: !Ref TargetApiId
+          Stage: api
+      Description: Usage plan for API
+      UsagePlanName: ApiUsagePlan
+
+Outputs:
+  UsagePlanID:
+    Description: ID of created usage plan
+    Value: !Ref UsagePlan

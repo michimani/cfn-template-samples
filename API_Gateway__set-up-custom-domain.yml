@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Setup API Gateway custom domain name"
+
+Parameters:
+  AcmArn:
+    Type: String
+  CustomDomainName:
+    Type: String
+  ApiID:
+    Type: String
+  DomainHostZoneId:
+    Type: String
+
+Resources:
+  ApiGatewayCustomDomainName:
+    Type: "AWS::ApiGateway::DomainName"
+    Properties:
+      CertificateArn: !Ref AcmArn
+      DomainName: !Ref CustomDomainName
+
+  BasePathMapping:
+    Type: "AWS::ApiGateway::BasePathMapping"
+    DependsOn: ApiGatewayCustomDomainName
+    Properties:
+      DomainName: !Ref CustomDomainName
+      RestApiId: !Ref ApiID
+      Stage: api
+
+  CustomDomainRecord:
+    Type: "AWS::Route53::RecordSet"
+    Properties:
+      Name: !Ref CustomDomainName
+      Type: A
+      HostedZoneId: !Ref DomainHostZoneId
+      AliasTarget:
+        DNSName: !GetAtt ApiGatewayCustomDomainName.DistributionDomainName
+        HostedZoneId: !GetAtt ApiGatewayCustomDomainName.DistributionHostedZoneId

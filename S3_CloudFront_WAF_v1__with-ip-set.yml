@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "S3 + CloudFront + WAF v1"
+
+Resources:
+  # CloudFront Origin Access Identity
+  OriginAccessIdentiry:
+    Type: "AWS::CloudFront::CloudFrontOriginAccessIdentity"
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: "forWAFv1"
+
+  # S3 Bucket
+  S3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: <your-s3-bucket-name>
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  S3BucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${OriginAccessIdentiry}"
+            Action: "s3:ListBucket"
+            Resource: !Sub "arn:aws:s3:::${S3Bucket}"
+          - Effect: "Allow"
+            Principal:
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${OriginAccessIdentiry}"
+            Action: "s3:GetObject"
+            Resource: !Sub "arn:aws:s3:::${S3Bucket}/*"
+
+  # AWS WAF v1
+  WAFv1IPSet:
+    Type: "AWS::WAF::IPSet"
+    Properties:
+      Name: "MyWAFv1IPSet"
+      IPSetDescriptors:
+        - Type: "IPV4"
+          Value: 192.0.2.44/32
+        - Type: "IPV6"
+          Value: 1111:0000:0000:0000:0000:0000:0000:0111/128
+
+  WAFv1Rule:
+    Type: "AWS::WAF::Rule"
+    Properties:
+      Name: "MyWAFv1Rule"
+      MetricName: "MyWAFv1RuleMetric"
+      Predicates:
+        - DataId: !Ref WAFv1IPSet
+          Negated: false
+          Type: "IPMatch"
+
+  WAFv1WebACL:
+    Type: "AWS::WAF::WebACL"
+    Properties:
+      Name: "MyWAFv1WebACL"
+      MetricName: "MyWAFv1WebACLMetric"
+      DefaultAction:
+        Type: "BLOCK"
+      Rules:
+        - RuleId: !Ref WAFv1Rule
+          Priority: 0
+          Action:
+            Type: "ALLOW"
+
+  # CloudFront
+  CloudFrontDistribution:
+    Type: "AWS::CloudFront::Distribution"
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: "s3-for-waf-v1-origin"
+            DomainName: !GetAtt "S3Bucket.DomainName"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${OriginAccessIdentiry}"
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: "s3-for-waf-v1-origin"
+          ViewerProtocolPolicy: "redirect-to-https"
+          AllowedMethods: ["GET", "HEAD"]
+          ForwardedValues:
+            QueryString: false
+        WebACLId: !Ref WAFv1WebACL
+        DefaultRootObject: "index.html"

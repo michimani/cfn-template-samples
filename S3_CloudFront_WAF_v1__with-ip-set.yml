@@ -1,6 +1,10 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "S3 + CloudFront + WAF v1"
 
+Parameters:
+  BucketNameForStaticContents:
+    Type: String
+
 Resources:
   # CloudFront Origin Access Identity
   OriginAccessIdentiry:
@@ -13,7 +17,7 @@ Resources:
   S3Bucket:
     Type: "AWS::S3::Bucket"
     Properties:
-      BucketName: <your-s3-bucket-name>
+      BucketName: !Ref BucketNameForStaticContents
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFront Functions : Function"
+
+Resources:
+  CFF:
+    Type: AWS::CloudFront::Function
+    Properties:
+      AutoPublish: true
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var requestUri = request.uri;
+
+          // complete `index.html` for requests to origin
+          var actualUri = requestUri.replace(/\/$/, '\/index.html');
+          request.uri = actualUri;
+
+          // request to origin
+          return request;
+        }
+      FunctionConfig:
+        Comment: "This is a sample function."
+        Runtime: "cloudfront-js-1.0"
+      Name: "cff-sample"
+
+Outputs:
+  CFFARN:
+    Description: ARN of Function
+    Value: !Ref CFF
+    Export:
+      Name: CFF-Sample-ARN
